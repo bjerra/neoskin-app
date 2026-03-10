@@ -24,7 +24,6 @@ export default function RootLayout({ children }) {
         window.netlifyIdentity?.init();
 
         // Optional: Check user immediately after load
-
         setUser(window.netlifyIdentity?.currentUser())
       };
     }
