@@ -8,7 +8,7 @@ import { Login } from 'components/login';
 
 export default function RootLayout({ children }) {
 
-    const [user, setUser] = useState(window.netlifyIdentity?.currentUser());
+    const [user, setUser] = useState(window?.netlifyIdentity?.currentUser());
 
   useEffect(() => {
     // Load the script dynamically if not already present
