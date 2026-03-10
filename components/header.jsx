@@ -5,16 +5,11 @@ import githubLogo from 'public/images/github-mark-white.svg';
 
 const navItems = [
     { linkText: 'Home', href: '/' },
-    { linkText: 'Revalidation', href: '/revalidation' },
-    { linkText: 'Image CDN', href: '/image-cdn' },
-    { linkText: 'Edge Function', href: '/edge' },
-    { linkText: 'Blobs', href: '/blobs' },
-    { linkText: 'Classics', href: '/classics' },
-    { linkText: 'Middleware', href: '/middleware' },
-    { linkText: 'Routing', href: '/routing' }
+    { linkText: 'Sälj', href: '/sell' },
+    { linkText: 'Fyll på', href: '/restock' },
 ];
 
-export function Header() {
+export function Header({user}) {
     return (
         <nav className="flex flex-wrap items-center gap-4 pt-6 pb-12 sm:pt-12 md:pb-24">
             <Link href="/">
@@ -31,14 +26,8 @@ export function Header() {
                     ))}
                 </ul>
             )}
-            <Link
-                href="https://github.com/netlify-templates/next-platform-starter"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-auto"
-            >
-                <Image src={githubLogo} alt="GitHub logo" className="w-7" />
-            </Link>
+             <p>Welcome, {user?.user_metadata?.full_name || user?.email}!</p>
+            <button onClick={logout}>Log out</button>
         </nav>
     );
 }

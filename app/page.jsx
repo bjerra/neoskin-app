@@ -3,7 +3,7 @@ import { Card } from 'components/card';
 import { ContextAlert } from 'components/context-alert';
 import { Markdown } from 'components/markdown';
 import { RandomQuote } from 'components/random-quote';
-import { getNetlifyContext } from 'utils';
+import { getNetlifyContext, getTestValue } from 'utils';
 
 const contextExplainer = `
 The card below is rendered on the server based on the value of \`process.env.CONTEXT\` 
@@ -15,6 +15,7 @@ The card content below is fetched by the client-side from \`/quotes/random\` (se
 `;
 
 const ctx = getNetlifyContext();
+const test = getTestValue();
 
 export default function Page() {
     return (
