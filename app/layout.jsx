@@ -50,10 +50,6 @@ export default function RootLayout({ children }) {
   }, []);
 
 
-  const logout = () => {
-        window.netlifyIdentity?.logout()
-  };
-
     return (
         <html lang="en">
             <head>
