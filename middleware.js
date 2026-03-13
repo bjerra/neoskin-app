@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { CreateServerClient } from './utils/supabase-server';
 
-export function middleware(request) {
+export async function middleware(request) {
   const response = NextResponse.next();
   
   // Add security headers
@@ -13,17 +15,24 @@ export function middleware(request) {
   
   const pathname = request.nextUrl.pathname;
   
-  // Logging for demonstration (in production, use proper logging service)
-  console.log(`[Middleware] ${request.method} ${pathname} - ${new Date().toISOString()}`);
-  
-  // Example: Block access to /admin paths (demonstration only)
-  if (pathname.startsWith('/admin')) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/';
-    response.headers.set('X-Blocked-Path', pathname);
-    return NextResponse.redirect(url);
+  const supabase = await CreateServerClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  const isAuthRoute = request.nextUrl.pathname.startsWith('/auth') ||
+                      request.nextUrl.pathname === '/login'; // add your login path
+
+  // Redirect unauthenticated users away from protected routes
+  if (!session &&  request.nextUrl.pathname !== '/login') {
+    const redirectUrl = new URL('/login', request.url);
+    return NextResponse.redirect(redirectUrl);
   }
-  
+
+  // Optional: Redirect authenticated users away from login page
+  if (session && isAuthRoute) {
+  //  const redirectUrl = new URL('/', request.url); // your protected home
+   // return NextResponse.redirect(redirectUrl);
+  }
+
   // Example: Add custom header for API routes
   if (pathname.startsWith('/api/') || pathname.startsWith('/quotes/')) {
     response.headers.set('X-API-Version', '1.0');

@@ -1,20 +1,24 @@
-import Link from 'next/link';
-import { Card } from 'components/card';
+import { getAllProductsWithInventory, getProductAvailableQuantity } from '../utils/shopify-admin';
+import { RefreshButton } from '../components/refreshButton';
+import ProductList from '../components/productList'
 
+export default async function Page() {
 
-export default function Page() {
-    return (
-        <div className="flex flex-col gap-12 sm:gap-16">
-            <section>
-              
-                <h1 className="mb-4">Netlify Platform Starter – Next.js</h1>
-              
-             
-            </section>
-         
-          
-        </div>
-    );
+ const products = await getAllProductsWithInventory();
+  // Optional: sort by name or stock level
+
+  return (
+    <div className="container mx-auto p-6">
+        <RefreshButton />
+      <h1 className="text-3xl font-bold mb-8">
+        Inventory Overview ({products.length} products)
+      </h1>
+
+      {products.length === 0 ? (
+        <p className="text-gray-500">No products found or error fetching inventory.</p>
+      ) : (
+        <ProductList initialProducts={products}/>
+      )}
+    </div>
+  );
 }
-
-

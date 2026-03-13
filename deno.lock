@@ -12,12 +12,15 @@
     "packageJson": {
       "dependencies": [
         "npm:@netlify/blobs@^10.7.0",
+        "npm:@supabase/ssr@0.9",
+        "npm:@supabase/supabase-js@^2.99.0",
         "npm:@tailwindcss/postcss@^4.1.15",
         "npm:babel-plugin-react-compiler@1",
         "npm:blobshape@1",
         "npm:bright@1",
         "npm:eslint-config-next@^16.0.8",
         "npm:eslint@9.39.4",
+        "npm:graphql-request@^7.4.0",
         "npm:markdown-to-jsx@^7.7.16",
         "npm:next@^16.0.8",
         "npm:postcss@^8.4.36",
