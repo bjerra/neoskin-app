@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidateTag } from 'next/cache';
+import { getAllProductsWithInventory } from '../utils/shopify-admin';
 
 export async function refreshInventory() {
   // Optional: you can add logic here, e.g. check Supabase auth session if needed
@@ -11,6 +12,12 @@ export async function refreshInventory() {
   // OR revalidateTag('shopify-products'); for broader invalidation
 
   return { success: true, message: 'Inventory cache invalidated – refresh the page' };
+}
+
+export async function loadAllProducts() {
+  
+    const products = await getAllProductsWithInventory();
+    return products;
 }
 
 
@@ -56,7 +63,6 @@ export async function updateVariantStock(inventoryItemId, delta) {
   if (adjustResult.errors || adjustResult.data?.inventoryAdjustQuantities?.userErrors?.length > 0) {
     return { error: adjustResult.data?.inventoryAdjustQuantities?.userErrors || adjustResult.errors };
   }
-console.log()
    return { success: true, adjustedBy: delta,adjustmentId: adjustResult.data.inventoryAdjustQuantities.inventoryAdjustmentGroup.i };
 
 }
@@ -136,7 +142,24 @@ export async function getProductVariantByBarCode(barcode) {
       productVariants(first: 1, query: $q) {
         edges {
           node {
-            id
+                id
+                title
+                product {
+                    title
+                }
+                inventoryItem {
+                id
+                inventoryLevels(first: 1) { 
+                    edges {
+                    node {
+                        quantities(names: ["available", "on_hand", "committed", "incoming"]) {
+                          name
+                          quantity           
+                        }
+                    }
+                    }
+                }
+            }
           }
         }
       }
@@ -166,11 +189,23 @@ export async function getProductVariantByBarCode(barcode) {
     const variants = result.data.productVariants.edges.map((e) => e.node);
 
     if (variants.length === 0) {
-      return { error: 'No variant with this barcode' };
+      return { error: 'Finns ingen produkt med denna streckkod' };
     }
+    const variant = {id:variants[0].id};
+    const inventoryItem = variants[0].inventoryItem;
+    
+    if (inventoryItem){
+        const levels = inventoryItem.inventoryLevels?.edges || [];
+        const levelEdge = levels[0];
+        const quantities = levelEdge.node.quantities || [];
+        const availableQty = quantities.find((q) => q.name === 'available')?.quantity || 0;
+        variant.quantity = availableQty;
+        variant.inventoryItemId = inventoryItem.id;
+    }
+    variant.title = variants[0].title === 'Default Title' ? variants[0].product.title: variants[0].title;
 
     return {
-      variant: variants[0],  // usually expect 1; take first if multiples
+      variant,  // usually expect 1; take first if multiples
       allMatches: variants,
     };
 }

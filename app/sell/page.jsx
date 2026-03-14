@@ -8,24 +8,34 @@ import BarcodeListener from '../../components/barcodeListener'
 // Example usage in a form handler (Server Action)
 export default function Page() {
   
-    
+    const [status, setStatus] = useState(null);
     const [loading, setLoading] = useState(null);
-       const [lastScanned, setLastScanned] = useState(null);
+    const [lastScanned, setLastScanned] = useState(null);
    
        const handleScan = async (barcode) => {
+        if(loading) return;
         setLoading(true);
-        console.log('Scanned barcode:', barcode);
         setLastScanned(barcode);
        
          try {
              const productResult = await getProductVariantByBarCode(barcode);
-          
-             if(productResult.error){
-                 console.error(productResult.error);
-             } else{
-                 console.log(productResult.variant)
-                  //  const result = await updateVariantStock(productResult.variant.id, -1);
-             }
+                if(productResult.error){
+                     setStatus({error: productResult.error})
+                } else{
+                    if(productResult.variant.quantity > 0){
+                          const updateResult = await updateVariantStock(productResult.variant.inventoryItemId, -1);
+                        if(updateResult.error){
+                            console.log(updateResult.error)
+                            setStatus({error: "något gick fel"})
+                        } else{
+                            setStatus({title: productResult.variant.title, quantity: productResult.variant.quantity -1})
+                        }
+                    } else{
+                          setStatus({error: "Finns inga i lager"})
+                    }
+                  
+                    
+                }
            
            } catch (error) {
              console.error(error);
@@ -33,7 +43,6 @@ export default function Page() {
              setLoading(false);
            }
      };
-
 
        return (
           <div className="p-8 border-2 border-green-500">
@@ -54,6 +63,17 @@ export default function Page() {
            placeholder="Scanner will fill this automatically"
            readOnly
          />
+          {status && 
+             (status.error ? ( 
+             <p className="text-2xl text-red-600">{status.error}</p>
+            ) : ( 
+                <div className='text-green-600 text-2xl'>
+                    <p className="">OK!</p>
+                    <p className="">{status.title}</p>
+                    <p className="">{`Nytt lagersaldo : ${status.quantity}`}</p>
+                </div>
+            )
+        )}
        </div>
        );
 }

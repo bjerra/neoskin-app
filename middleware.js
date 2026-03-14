@@ -28,9 +28,9 @@ export async function middleware(request) {
   }
 
   // Optional: Redirect authenticated users away from login page
-  if (session && isAuthRoute) {
-  //  const redirectUrl = new URL('/', request.url); // your protected home
-   // return NextResponse.redirect(redirectUrl);
+  if (session && request.nextUrl.pathname === '/login') {
+    const redirectUrl = new URL('/', request.url); // your protected home
+    return NextResponse.redirect(redirectUrl);
   }
 
   // Example: Add custom header for API routes

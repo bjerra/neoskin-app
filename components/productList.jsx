@@ -1,18 +1,30 @@
 'use client';
 
-import { useState,useMemo } from 'react';
-import {updateVariantStock,updateBarcode} from '../app/actions';
+import { useState,useEffect, useMemo } from 'react';
+import {updateVariantStock,updateBarcode, loadAllProducts} from '../app/actions';
 import BarcodeListener from '../components/barcodeListener'
 import Modal from '../components/modal'
 
 
-export default function ProductList({ initialProducts }) {
-    const [products, setProducts] = useState(initialProducts); 
+export default function ProductList() {
+    const [products, setProducts] = useState([]); 
     const [searchTerm, setSearchTerm] = useState('');
     const [status, setStatus] = useState(null);
     const [loading, setLoading] = useState(false);
     const [barcodeItemId, setBarcodeItemId] = useState(null);
     
+    useEffect(() => {
+        (async () => {
+        const data = await loadProducts();
+       
+    })();
+       
+  }, []);
+
+   const loadProducts = async () => {
+       const products = await loadAllProducts();
+       setProducts(products);
+     }
 
      const handleSetBarcodeItemId = ({productId, variantId}) => {
         if(barcodeItemId){
@@ -96,7 +108,7 @@ const sortedProducts = products.sort((a, b) =>
 
   return (
     <div>
-        <div className="max-w-md">
+        <div className="m-auto mb-2 max-w-md bg-blue-200 p-2 rounded-md border border-blue-400">
             <label htmlFor="product-search" className="block text-sm font-medium text-gray-700 mb-1">
             Search by product title
             </label>
@@ -105,8 +117,8 @@ const sortedProducts = products.sort((a, b) =>
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="e.g. T-Shirt, Hoodie..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-900"
+            placeholder=""
+            className="w-full px-4 py-2 border bg-white border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-900"
             />
       </div>
        {status && (
@@ -125,16 +137,37 @@ const sortedProducts = products.sort((a, b) =>
       <div className="grid gap-3 grid-cols-1 md:grid-cols-1">
         {filteredProducts.map(product => {
             return(
-          <div key={product.id} className="border bg-amber-50 p-4 rounded">
+          <div key={product.id} className="border bg-gray-50 p-4 rounded">
             <h4>{product.title}</h4>
              {product.variants.map((variant) => {
                  return(
-                    <div key={variant.id} className="border-b border-gray-400 flex flex-row justify-between">
-                        <p key={variant.id}>{`${variant.title === 'Default Title' ? '' : variant.title} barcode: ${variant.barcode}`}</p>
-                        <p className="font-bold">{`inStock: ${variant.quantity}`}</p>
-                         <button onClick={() => handleUpdateStock(variant.inventoryItemId, -1)}  disabled={loading}>-</button>
-                        <button onClick={() => handleUpdateStock(variant.inventoryItemId, 1)}  disabled={loading}>+</button>
-                        <button onClick={() =>  handleSetBarcodeItemId({productId: product.id, variantId: variant.id})}  disabled={loading}>Scan</button>
+                    <div key={variant.id} className="border-b border-gray-400 flex flex-row items-center justify-between gap-20">
+                        <p className='w-xs'>{`${variant.title === 'Default Title' ? '' : variant.title}`}</p>
+                        <div className='flex flex-row gap-2 items-center'>
+                            <p className="font-bold">{`stock: ${variant.quantity}`}</p>
+                            <button className={`
+                                flex h-8 w-8 items-center justify-center rounded-md 
+                                bg-red-200 border border-gray-300 text-gray-600 text-lg
+                                hover:bg-gray-50 hover:border-gray-400 
+                                disabled:opacity-50
+                                transition-colors
+                                `} onClick={() => handleUpdateStock(variant.inventoryItemId, -1)}  disabled={loading}>-</button>
+                            <button className={`
+                                flex h-8 w-8 items-center justify-center rounded-md 
+                                bg-green-200 border border-gray-300 text-gray-600 text-lg
+                                hover:bg-gray-50 hover:border-gray-400 
+                                disabled:opacity-50
+                                transition-colors
+                                `} onClick={() => handleUpdateStock(variant.inventoryItemId, 1)}  disabled={loading}>+</button>
+                        </div>
+                         <p key={variant.id}>{variant.barcode || 'Barcode missing'}</p>
+                        <button className={`
+                            flex h-8 w-16 items-center justify-center rounded-md 
+                            bg-gray-200 border border-gray-300 text-gray-600 text-lg
+                            hover:bg-gray-50 hover:border-gray-400 
+                            disabled:opacity-50
+                            transition-colors
+                            `} onClick={() =>  handleSetBarcodeItemId({productId: product.id, variantId: variant.id})}  disabled={loading}>Scan</button>
                     </div>
                  )
              })}
