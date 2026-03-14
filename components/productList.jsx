@@ -15,10 +15,8 @@ export default function ProductList() {
     
     useEffect(() => {
         (async () => {
-        const data = await loadProducts();
-       
+         await loadProducts();
     })();
-       
   }, []);
 
    const loadProducts = async () => {
@@ -71,7 +69,7 @@ export default function ProductList() {
         }
     };
   
-    const handleUpdateStock = async (inventoryItemId, change) => {
+    const handleUpdateStock = async (productId,inventoryItemId, change) => {
       setLoading(true);
       setStatus(null);
   
@@ -81,6 +79,18 @@ export default function ProductList() {
             console.error(result.error);
         } else{
             setStatus(result.message || 'Stock Updated!');
+              const newProducts = [...products];
+                newProducts.forEach(p=>{
+                if(p.id == productId){
+                    p.variants.forEach(variant => {
+                        if(variant.inventoryItemId == inventoryItemId){
+                            variant.quantity += change;
+                        }
+                    })
+                }
+             });
+           
+             setProducts(newProducts)
         }
       
       } catch (error) {
@@ -138,7 +148,7 @@ const sortedProducts = products.sort((a, b) =>
         {filteredProducts.map(product => {
             return(
           <div key={product.id} className="border bg-gray-50 p-4 rounded">
-            <h4>{product.title}</h4>
+            <h4 className='font-bold'>{product.title}</h4>
              {product.variants.map((variant) => {
                  return(
                     <div key={variant.id} className="border-b border-gray-400 flex flex-row items-center justify-between gap-20">
@@ -151,14 +161,14 @@ const sortedProducts = products.sort((a, b) =>
                                 hover:bg-gray-50 hover:border-gray-400 
                                 disabled:opacity-50
                                 transition-colors
-                                `} onClick={() => handleUpdateStock(variant.inventoryItemId, -1)}  disabled={loading}>-</button>
+                                `} onClick={() => handleUpdateStock(product.id,variant.inventoryItemId, -1)}  disabled={loading}>-</button>
                             <button className={`
                                 flex h-8 w-8 items-center justify-center rounded-md 
                                 bg-green-200 border border-gray-300 text-gray-600 text-lg
                                 hover:bg-gray-50 hover:border-gray-400 
                                 disabled:opacity-50
                                 transition-colors
-                                `} onClick={() => handleUpdateStock(variant.inventoryItemId, 1)}  disabled={loading}>+</button>
+                                `} onClick={() => handleUpdateStock(product.id,variant.inventoryItemId, 1)}  disabled={loading}>+</button>
                         </div>
                          <p key={variant.id}>{variant.barcode || 'Barcode missing'}</p>
                         <button className={`

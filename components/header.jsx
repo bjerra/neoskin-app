@@ -70,12 +70,12 @@ export function Header() {
                  <div>
                     <p>{user.email}</p>
                     <button className={`
-                                flex h-8 w-20 items-center justify-center rounded-md 
-                                bg-red-200 border border-gray-300 text-gray-600 text-lg
-                                hover:bg-gray-50 hover:border-gray-400 
-                                disabled:opacity-50
-                                transition-colors
-                                `}onClick={handleLogout}>Log out</button>
+                        flex h-8 w-20 items-center justify-center rounded-md 
+                        bg-red-200 border border-gray-300 text-gray-600 text-lg
+                        hover:bg-gray-50 hover:border-gray-400 
+                        disabled:opacity-50
+                        transition-colors
+                        `} onClick={handleLogout}>Log out</button>
                  </div>
             }
            
