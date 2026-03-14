@@ -42,23 +42,26 @@ export function Header() {
     };
   }, [supabase]);
 
+  const buttonStyle = "inline-flex px-1.5 py-1 sm:px-3 sm:py-2 no-underline text-2xl text-[#fff] no-underline bg-gray-500 rounded-md";
+  const currentButtonStyle = "inline-flex px-1.5 py-1 sm:px-3 sm:py-2 no-underline text-2xl text-[#fff] no-underline bg-green-500 rounded-md";
+
     return (
         <nav className="flex flex-wrap justify-between items-center gap-4 pt-6 pb-12 sm:pt-12 md:pb-24">
             {!!navItems?.length && (
                 <ul className="flex flex-wrap gap-x-10 gap-y-1">
                     <li>
-                        <Link href={'/'} className="inline-flex px-1.5 py-1 sm:px-3 sm:py-2 text-2xl">
-                           Home
+                        <Link href={'/'} className={buttonStyle}>
+                           Produkter
                         </Link>
                     </li>
                      <li>
-                        <Link href={'/sell'} className="inline-flex px-1.5 py-1 sm:px-3 sm:py-2 text-2xl text-[#fff] bg-green-500 rounded-md">
-                            Sälj
+                        <Link href={'/sell'} className="inline-flex px-1.5 py-1 sm:px-3 sm:py-2 text-2xl text-[#fff] no-underline bg-green-500 rounded-md">
+                            Sälj Produkt
                         </Link>
                     </li>
                      <li>
-                        <Link href={'/restock'} className="inline-flex px-1.5 py-1 sm:px-3 sm:py-2 text-2xl text-[#fff] bg-blue-500 rounded-md">
-                            Fyll på
+                        <Link href={'/restock'} className="inline-flex px-1.5 py-1 sm:px-3 sm:py-2 text-2xl text-[#fff] no-underline bg-blue-500 rounded-md">
+                            Fyll på Lager
                         </Link>
                     </li>
                 </ul>

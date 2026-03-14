@@ -66,16 +66,20 @@ export function getProductVariants(product) {
     const inventoryItem = variant.inventoryItem;
     
     if (!inventoryItem) continue;
+
+    const inventoryItemId = inventoryItem.id
     
     const levels = inventoryItem.inventoryLevels?.edges || [];
     
     let quantity = 0;
-    for (const levelEdge of levels) {
-      const quantities = levelEdge.node.quantities || [];
-      const availableQty = quantities.find((q) => q.name === 'available')?.quantity || 0;
-      quantity += availableQty;
-    }
-    data.push({title: variant.title, sku: variant.sku, quantity })
+    
+    const levelEdge = levels[0];
+
+    const quantities = levelEdge.node.quantities || [];
+    const availableQty = quantities.find((q) => q.name === 'available')?.quantity || 0;
+    quantity += availableQty;
+    
+    data.push({id: variant.id,title: variant.title, inventoryItemId, barcode: variant.barcode, quantity })
   }
 
   return data;
@@ -103,16 +107,13 @@ const PRODUCTS_WITH_INVENTORY_QUERY = `
               node {
                 id
                 title
+                barcode
                 sku
                 inventoryItem {
                   id
                   inventoryLevels(first: 1) { 
                     edges {
                       node {
-                        location {
-                          id
-                          name
-                        }
                         quantities(names: ["available", "on_hand", "committed", "incoming"]) {
                           name
                           quantity           
@@ -167,6 +168,9 @@ export async function getAllProductsWithInventory() {
     // Optional: small delay to be polite to rate limits
     // await new Promise(r => setTimeout(r, 300));
   }
+  allProducts.forEach(product => {
+    product.variants = getProductVariants(product)
+  });
 
   return allProducts;
 }
@@ -186,4 +190,6 @@ export async function updateProduct(productId, updates) {
 
   return res.json();
 }
+
+
 
