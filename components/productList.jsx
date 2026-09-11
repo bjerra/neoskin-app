@@ -1,28 +1,25 @@
 'use client';
 
 import { useState,useEffect, useMemo } from 'react';
-import {updateVariantStock,updateBarcode, loadAllProducts} from '../app/actions';
+import {updateVariantStock,updateBarcode} from '../app/actions';
 import BarcodeListener from '../components/barcodeListener'
 import Modal from '../components/modal'
 
 
-export default function ProductList() {
-    const [products, setProducts] = useState([]); 
+export default function ProductList({ initialProducts = [] }) {
+    // Seeded from the server render, so the list is in the initial HTML instead
+    // of waiting for hydration and then firing a server action.
+    const [products, setProducts] = useState(initialProducts);
     const [searchTerm, setSearchTerm] = useState('');
     const [status, setStatus] = useState(null);
     const [loading, setLoading] = useState(false);
     const [barcodeItemId, setBarcodeItemId] = useState(null);
-    
-    useEffect(() => {
-        (async () => {
-         await loadProducts();
-    })();
-  }, []);
 
-   const loadProducts = async () => {
-       const products = await loadAllProducts();
-       setProducts(products);
-     }
+    // Re-sync when the server sends a fresh list (e.g. after router.refresh()
+    // from the Refresh button). The server is the source of truth.
+    useEffect(() => {
+        setProducts(initialProducts);
+    }, [initialProducts]);
 
      const handleSetBarcodeItemId = ({productId, variantId}) => {
         if(barcodeItemId){
@@ -101,9 +98,9 @@ export default function ProductList() {
       }
     };
 
-const sortedProducts = products.sort((a, b) => 
-    a.title.localeCompare(b.title)
-  );
+  // Sorting now happens once on the server. The previous `products.sort(...)`
+  // here mutated React state in place on every render, and its result was never
+  // used -- the list below renders filteredProducts.
 
   const filteredProducts = useMemo(() => {
     if (!searchTerm.trim()) return products;

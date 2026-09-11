@@ -1,7 +1,7 @@
 'use client'
 
-import {updateVariantStock,getProductVariantByBarCode} from '../actions'
-import { useState } from 'react';
+import {scanAndAdjust} from '../actions'
+import { useCallback, useState } from 'react';
 import BarcodeListener from '../../components/barcodeListener'
 
 export default function Page() {
@@ -10,31 +10,24 @@ export default function Page() {
     const [loading, setLoading] = useState(null);
     const [lastScanned, setLastScanned] = useState(null);
 
-    const handleScan = async (barcode) => {
+    // useCallback keeps the identity stable so BarcodeListener doesn't
+    // re-subscribe its keydown handler on every render.
+    const handleScan = useCallback(async (barcode) => {
             if(loading) return;
            setLoading(true);
            setLastScanned(barcode);
-          
+
             try {
-                const productResult = await getProductVariantByBarCode(barcode);
-                if(productResult.error){
-                     setStatus({error: productResult.error})
-                } else{
-                    const updateResult = await updateVariantStock(productResult.variant.inventoryItemId, 1);
-                    if(updateResult.error){
-                        console.log(updateResult.error)
-                         setStatus({error: "något gick fel"})
-                    } else{
-                         setStatus({title: productResult.variant.title, quantity: productResult.variant.quantity +1})
-                    }
-                }
-              
+                // Lookup + adjust in a single server action, instead of two
+                // sequential ones.
+                setStatus(await scanAndAdjust(barcode, 1));
               } catch (error) {
                 console.error(error);
+                setStatus({error: "något gick fel"})
               } finally {
                 setLoading(false);
               }
-        };
+        }, [loading]);
 
     return (
        <div className="p-8 border-2 border-blue-500">

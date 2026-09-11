@@ -1,6 +1,16 @@
+import { unstable_cache } from 'next/cache';
 
-export async function shopifyAdminFetch({query,variables = {}, next, cache}) {
- 
+/**
+ * Cache tag for the product/inventory list.
+ *
+ * The list is cached indefinitely and only dropped when something explicitly
+ * invalidates this tag -- the Refresh button, or any stock/barcode change made
+ * through this app. Changes made directly in Shopify admin or the POS will not
+ * show up until someone hits Refresh.
+ */
+export const INVENTORY_TAG = 'shopify-inventory';
+
+export async function shopifyAdminFetch({ query, variables = {}, next, cache }) {
   const endpoint = `https://${process.env.SHOPIFY_STORE_DOMAIN}/admin/api/2026-01/graphql.json`;
 
   try {
@@ -12,7 +22,7 @@ export async function shopifyAdminFetch({query,variables = {}, next, cache}) {
       },
       body: JSON.stringify({ query, variables }),
       next,
-      cache, // Important for mutations — never cache
+      cache,
     });
 
     if (!response.ok) {
@@ -20,6 +30,19 @@ export async function shopifyAdminFetch({query,variables = {}, next, cache}) {
     }
 
     const result = await response.json();
+
+    // Shopify reports query cost and the state of the leaky bucket here. If
+    // `currentlyAvailable` is trending towards 0 we are being throttled, and
+    // Shopify is making us wait between calls -- which looks exactly like "the
+    // app is slow". Without this there is no way to tell.
+    const cost = result.extensions?.cost;
+    if (cost) {
+      const available = cost.throttleStatus?.currentlyAvailable;
+      const max = cost.throttleStatus?.maximumAvailable;
+      console.log(
+        `[shopify] cost requested=${cost.requestedQueryCost} actual=${cost.actualQueryCost} bucket=${available}/${max}`
+      );
+    }
 
     if (result.errors) {
       console.error('GraphQL Errors:', result.errors);
@@ -33,58 +56,46 @@ export async function shopifyAdminFetch({query,variables = {}, next, cache}) {
   }
 }
 
-export function getProductAvailableQuantity(product) {
-  let total = 0;
-
-  const variants = product.variants?.edges || [];
-  
-  for (const variantEdge of variants) {
-    const variant = variantEdge.node;
-    const inventoryItem = variant.inventoryItem;
-    
-    if (!inventoryItem) continue;
-    
-    const levels = inventoryItem.inventoryLevels?.edges || [];
-    
-    for (const levelEdge of levels) {
-      const quantities = levelEdge.node.quantities || [];
-      const availableQty = quantities.find((q) => q.name === 'available')?.quantity || 0;
-      total += availableQty;
-    }
-  }
-
-  return total;
-}
-
 export function getProductVariants(product) {
   let data = [];
 
   const variants = product.variants?.edges || [];
-  
+
   for (const variantEdge of variants) {
     const variant = variantEdge.node;
     const inventoryItem = variant.inventoryItem;
-    
+
     if (!inventoryItem) continue;
 
-    const inventoryItemId = inventoryItem.id
-    
+    const inventoryItemId = inventoryItem.id;
+
     const levels = inventoryItem.inventoryLevels?.edges || [];
-    
-    let quantity = 0;
-    
     const levelEdge = levels[0];
 
-    const quantities = levelEdge.node.quantities || [];
-    const availableQty = quantities.find((q) => q.name === 'available')?.quantity || 0;
-    quantity += availableQty;
-    
-    data.push({id: variant.id,title: variant.title, inventoryItemId, barcode: variant.barcode, quantity })
+    // A variant that is not stocked at any location has no inventory levels.
+    // Reading levels[0].node directly used to throw here.
+    const quantities = levelEdge?.node?.quantities || [];
+    const quantity = quantities.find((q) => q.name === 'available')?.quantity || 0;
+
+    data.push({
+      id: variant.id,
+      title: variant.title,
+      inventoryItemId,
+      barcode: variant.barcode,
+      quantity,
+    });
   }
 
   return data;
 }
 
+/*
+ * Only the fields getProductVariants() and the UI actually read.
+ *
+ * This previously also pulled collections(first: 10) with id/title/handle for
+ * every product, plus handle and sku, plus four quantity names -- none of which
+ * are used anywhere in the app. They were pure query cost.
+ */
 const PRODUCTS_WITH_INVENTORY_QUERY = `
   query GetProductsWithInventory($first: Int = 20, $after: String) {
     products(first: $first, after: $after) {
@@ -92,31 +103,20 @@ const PRODUCTS_WITH_INVENTORY_QUERY = `
         node {
           id
           title
-          handle
-          collections(first: 10) {
-          edges {
-            node {
-              id
-              title
-              handle
-            }
-          }
-        }
-          variants(first: 10) {         
+          variants(first: 10) {
             edges {
               node {
                 id
                 title
                 barcode
-                sku
                 inventoryItem {
                   id
-                  inventoryLevels(first: 1) { 
+                  inventoryLevels(first: 1) {
                     edges {
                       node {
-                        quantities(names: ["available", "on_hand", "committed", "incoming"]) {
+                        quantities(names: ["available"]) {
                           name
-                          quantity           
+                          quantity
                         }
                       }
                     }
@@ -126,7 +126,6 @@ const PRODUCTS_WITH_INVENTORY_QUERY = `
             }
           }
         }
-        cursor
       }
       pageInfo {
         hasNextPage
@@ -136,60 +135,53 @@ const PRODUCTS_WITH_INVENTORY_QUERY = `
   }
 `;
 
-export async function getAllProductsWithInventory() {
+async function fetchAllProductsWithInventory() {
   let allProducts = [];
-  let afterCursor= null;
+  let afterCursor = null;
   let hasNextPage = true;
 
   while (hasNextPage) {
-    const variables = { 
-      first: 20,          
-      after: afterCursor 
+    const variables = {
+      first: 20,
+      after: afterCursor,
     };
-    
+
     const { data, errors } = await shopifyAdminFetch({
       query: PRODUCTS_WITH_INVENTORY_QUERY,
       variables,
-       next: { 
-        tags: ['shopify-inventory'], 
-        }
+      // Caching is handled by unstable_cache below. Next cannot cache this
+      // fetch itself: it only caches GET, and Shopify GraphQL is POST.
+      cache: 'no-store',
     });
 
     if (errors || !data) {
       console.error('Fetch error:', errors);
-      break;
+      // Don't cache a partial catalogue as if it were the whole thing.
+      throw new Error('Failed to load products from Shopify');
     }
-    const pageProducts = data.products.edges.map(edge => edge.node);
+
+    const pageProducts = data.products.edges.map((edge) => edge.node);
     allProducts = allProducts.concat(pageProducts);
 
     hasNextPage = data.products.pageInfo.hasNextPage;
     afterCursor = data.products.pageInfo.endCursor;
-
-    // Optional: small delay to be polite to rate limits
-    // await new Promise(r => setTimeout(r, 300));
   }
-  allProducts.forEach(product => {
-    product.variants = getProductVariants(product)
+
+  allProducts.forEach((product) => {
+    product.variants = getProductVariants(product);
   });
+
+  // Sort once here, on the server, instead of re-sorting on every render.
+  allProducts.sort((a, b) => a.title.localeCompare(b.title));
 
   return allProducts;
 }
 
-export async function updateProduct(productId, updates) {
-
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/update-product`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ productId, ...updates }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error?.message || 'Update failed');
-  }
-
-  return res.json();
-}
-
-
-
+/**
+ * Cached product list. Held until INVENTORY_TAG is revalidated.
+ */
+export const getAllProductsWithInventory = unstable_cache(
+  fetchAllProductsWithInventory,
+  ['shopify-products-with-inventory'],
+  { tags: [INVENTORY_TAG], revalidate: false }
+);
