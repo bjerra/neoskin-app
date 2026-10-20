@@ -52,7 +52,7 @@ Set these in Netlify under **Site configuration → Environment variables**. Do 
 | `AUTH_PASSWORD` | Shared login password |
 | `AUTH_SECRET` | HMAC key for the session cookie. Generate one with `openssl rand -base64 32` |
 
-When you add each variable, include the **Functions** scope so the login route and middleware can read it at runtime. "All scopes" is fine. Save the variables, then redeploy so the running site picks them up.
+When you add each variable, include the **Functions** scope so the login route and the page-protection proxy can read it at runtime. "All scopes" is fine. Save the variables, then redeploy so the running site picks them up.
 
 Remove `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` if they are still set. This app no longer uses Supabase.
 

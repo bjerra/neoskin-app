@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server';
 import { SESSION_COOKIE, readServerEnv, readSessionToken } from './utils/session.js';
 
-// Node.js runtime reads AUTH_SECRET on each request. The Edge runtime inlines
-// process.env at build time, which would ignore variables set only for Functions.
-export const runtime = 'nodejs';
-
-export async function middleware(request) {
+export async function proxy(request) {
   const response = NextResponse.next();
 
   // Add security headers
