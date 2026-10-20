@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { CreateServerClient } from './utils/supabase-server';
+import { SESSION_COOKIE, readServerEnv, readSessionToken } from './utils/session.js';
+
+// Node.js runtime reads AUTH_SECRET on each request. The Edge runtime inlines
+// process.env at build time, which would ignore variables set only for Functions.
+export const runtime = 'nodejs';
 
 export async function middleware(request) {
   const response = NextResponse.next();
@@ -14,17 +18,18 @@ export async function middleware(request) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Router prefetches fire for every <Link> in the viewport, so they multiply
-  // the auth check (and therefore Supabase token refreshes) several times per
-  // page view. The RSC payload of a prefetch only carries component shells --
-  // all real data goes through the server actions in app/actions.js, which do
-  // their own auth check -- so skipping the session lookup here leaks nothing.
+  // Router prefetches fire for every <Link> in the viewport. The RSC payload
+  // of a prefetch only carries component shells — product data is loaded in
+  // server components and server actions that verify the session themselves —
+  // so skipping the lookup here does not expose inventory.
   if (request.headers.get('next-router-prefetch') === '1') {
     return response;
   }
 
-  const supabase = await CreateServerClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const session = await readSessionToken(
+    request.cookies.get(SESSION_COOKIE)?.value,
+    readServerEnv('AUTH_SECRET'),
+  );
 
   // Redirect unauthenticated users away from protected routes
   if (!session && pathname !== '/login') {
@@ -34,7 +39,7 @@ export async function middleware(request) {
 
   // Optional: Redirect authenticated users away from login page
   if (session && pathname === '/login') {
-    const redirectUrl = new URL('/', request.url); // your protected home
+    const redirectUrl = new URL('/', request.url);
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -51,12 +56,13 @@ export const config = {
     /*
      * Match all request paths except:
      * - _next/*            (build output, image optimizer, RSC data)
-     * - api/*              (route handlers do their own auth)
+     * - api/*              (login/logout are public; there are no other handlers)
      * - metadata files     (favicon, robots.txt, sitemap.xml, manifest)
      * - any static asset by extension
      *
-     * Every path matched here costs a Supabase session lookup, so keep this
-     * list tight.
+     * Server Actions are POSTs to these page paths, so they pass through here.
+     * They also call requireUser() because a matcher change must not silently
+     * drop that check.
      */
     '/((?!_next/|api/|favicon\\.ico|favicon\\.svg|robots\\.txt|sitemap\\.xml|manifest\\.webmanifest|images/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|woff|woff2|ttf)$).*)',
   ],
