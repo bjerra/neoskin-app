@@ -2,10 +2,10 @@ import { Suspense } from 'react';
 import ProductList from '../components/productList';
 import { RefreshButton } from '../components/refreshButton';
 import { getAllProductsWithInventory } from '../utils/shopify-admin';
-import { requireUser } from '../utils/supabase-server';
+import { requireUser } from '../utils/require-user.js';
 
 async function Products() {
-  // Middleware skips the session check on router prefetches, so this component
+  // The request proxy skips the session check on router prefetches, so this component
   // must not rely on it: the product data ends up in the RSC payload, and a
   // prefetch would hand it to an unauthenticated caller.
   await requireUser();

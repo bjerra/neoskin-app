@@ -2,7 +2,7 @@
 
 import { revalidateTag } from 'next/cache';
 import { shopifyAdminFetch, INVENTORY_TAG } from '../utils/shopify-admin';
-import { requireUser } from '../utils/supabase-server';
+import { requireUser } from '../utils/require-user.js';
 
 const LOCATION_ID = 'gid://shopify/Location/66022244525';
 
